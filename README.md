@@ -1,2 +1,1 @@
-# sos-app
-app
+# SOS-APP
