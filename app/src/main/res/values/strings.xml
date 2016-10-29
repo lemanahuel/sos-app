@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Coderhouse</string>
+    <!--Course-->
+    <string name="careerTitle">Niveles</string>
+    <string name="AddNewLevelTitle">Agregar Nivel</string>
+    <string name="fieldLevelTitleLbl">Nombre</string>
+    <string name="fieldLevelStatus">Habilitado?</string>
+    <string name="btnCreateLevel">Crear Nivel</string>
+    <!--Login-->
+    <string name="loginTitle">Login</string>
+    <string name="loginEmailLbl">Email</string>
+    <string name="loginPassLbl">Pass</string>
+    <string name="loginbtnSubmit">Entrar</string>
+    <string name="loginbtnSignin">Registrarse</string>
+    <!--Main-->
+    <string name="maincareersLbl">Carreras</string>
+    <string name="mainworkshopsLbl">Workshops</string>
+    <!--Settings-->
+    <string name="settingsBtnSave">Guardar</string>
+    <string name="settingsotherPreference">Cualquier cosa</string>
+    <string name="settingsotherPreferenceTitle">Otra preferencia</string>
+    <string name="settingsRbOpcion2">o terminar esta fu**ing carrera</string>
+    <string name="settingsRbOpcion1">Terminar esta carrera</string>
+    <string name="settingsobjectiveTitle">Cual es tu objetivo?</string>
+    <!--Signin-->
+    <string name="sigintitle">SignIn</string>
+    <string name="signinnameLbl">Nombre</string>
+    <string name="signinemailLbl">Email</string>
+    <string name="signinpassLbl">Pass</string>
+    <string name="signinLbl">Signin</string>
+    <string name="signinbtnLogin">Ya tengo cuenta</string>
+</resources>

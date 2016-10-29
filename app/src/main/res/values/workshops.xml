@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="workshops">
+        <item id="1">Angular2</item>
+        <item id="2">React</item>
+        <item id="3">HTML y CSS</item>
+    </string-array>
+</resources>
