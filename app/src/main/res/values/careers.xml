@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string-array name="careers">
-        <item id="0">Seleccionar</item>
-        <item id="1">Desarrollador FrontEnd</item>
-        <item id="2">Desarrollador FullStack</item>
-        <item id="3">Desarrollador Mobile</item>
-    </string-array>
-</resources>
