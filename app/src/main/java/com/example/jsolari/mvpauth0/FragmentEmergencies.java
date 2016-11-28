@@ -1,13 +1,25 @@
 package com.example.jsolari.mvpauth0;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -20,6 +32,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -28,9 +42,8 @@ public class FragmentEmergencies extends Fragment {
     public ListView emergenciesList;
     public static FragmentEmergenciesAdapter arrayAdapter;
     private ListView lstOpciones;
-
-    private static ApiSrv client = new ApiSrv();
-
+    public static SharedPreferences prefs;
+    private static ApiSrv ApiSrv = new ApiSrv();
     private ArrayList<EmergencyItem> datos = new ArrayList<EmergencyItem>();
 
     public FragmentEmergencies() {
@@ -38,30 +51,65 @@ public class FragmentEmergencies extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_emergencies, container, false);
     }
 
-
     @Override
     public void onActivityCreated(Bundle state) {
         super.onActivityCreated(state);
+        JSONObject user = null;
+        prefs = this.getActivity().getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        try {
+            user = new JSONObject(prefs.getString("user", "{}"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        final JSONObject finalUser = user;
+
         arrayAdapter = new FragmentEmergenciesAdapter(this, datos);
         emergenciesList = (ListView)getView().findViewById(R.id.emergenciesList);
         emergenciesList.setAdapter(arrayAdapter);
+        emergenciesList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> a, View v, int position, long id) {
+            final EmergencyItem item = ((EmergencyItem) a.getItemAtPosition(position));
+            try {
+                if (finalUser != null && finalUser.getBoolean("isVolunteer")) {
+                    Dialog dialog = onConfirmDialog(new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            try {
+                                answerEmergency(item, finalUser);
+                                MainActivity.showMapMarker(item);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                            dialog.cancel();
+                        }
+                    });
+                    dialog.show();
+                } else if (finalUser.getBoolean("isVolunteer")) {
+                    notVolunteerDialog().show();
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            }
+        });
 
-        getEmergencies();
-
-        // Button btnShowToken = (Button)getView().findViewById(R.id.button_show_token);
-        // btnShowToken.setOnClickListener(new View.OnClickListener() {
-        //     @Override
-        //     public void onClick(View v) {
-        //         sendEmergency("Nahuel", "Descripcion");
-        //     }
-        // });
+        try {
+            JSONArray items = new JSONArray(prefs.getString("emergencies", "[]"));
+            if (items.length() > 0) {
+                setEmergencies(items);
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.remove("emergencies");
+                editor.commit();
+            } else {
+                getEmergencies();
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     class FragmentEmergenciesAdapter extends ArrayAdapter<EmergencyItem> {
@@ -77,29 +125,25 @@ public class FragmentEmergencies extends Fragment {
             View item = inflater.inflate(R.layout.item_emergency, null);
 
             TextView lblTitulo = (TextView)item.findViewById(R.id.title);
-            lblTitulo.setText(datos.get(position).getTitle());
+            lblTitulo.setText(datos.get(position).getBody());
 
             TextView lblSubtitulo = (TextView)item.findViewById(R.id.body);
-            lblSubtitulo.setText(datos.get(position).getBody());
+            lblSubtitulo.setText(datos.get(position).getComuna());
 
             return(item);
         }
     }
-    public static void sendEmergency(String title, String body){
-        RequestParams params = new RequestParams();
-        params.put("title", title);
-        params.put("body", body);
-        params.put("token", FirebaseInstanceId.getInstance().getToken());
-        
+    public static void sendEmergency(Location loc){
         MainActivity.showEmergencyToast("text");
 
-        client.post("/emergencies", params,  new JsonHttpResponseHandler() {
+        ApiSrv.sendEmergency(loc, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
-                Log.d("Emergencies", responseBody.toString());
+                if (responseBody != null) {
+                    Log.d("Emergencies", responseBody.toString());
+                }
                 getEmergencies();
-                //Toast.makeText(FragmentEmergencies.this, "asd", Toast.LENGTH_LONG).show();
             }
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
@@ -111,31 +155,16 @@ public class FragmentEmergencies extends Fragment {
     }
 
     public static void getEmergencies(){
-        RequestParams params = new RequestParams();
-        client.get("/emergencies", params, new JsonHttpResponseHandler() {
+        ApiSrv.getEmergencies(new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONArray responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
-                Log.d("Emergencies", responseBody.toString());
-
-                if (arrayAdapter != null) {
-                    arrayAdapter.clear();
+                if (prefs != null) {
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("emergencies", responseBody.toString());
+                    editor.commit();
                 }
-
-                for (int i = 0; i < responseBody.length(); i++ ) {
-                    String title = null;
-                    String body = null;
-                    try {
-                        JSONObject item = responseBody.getJSONObject(i);
-                        title = item.getString("title");
-                        body = item.getString("body");
-                        if (arrayAdapter != null) {
-                            arrayAdapter.add(new EmergencyItem(title, body));
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
+                setEmergencies(responseBody);
             }
 
             @Override
@@ -147,7 +176,77 @@ public class FragmentEmergencies extends Fragment {
         });
     }
 
-    public static void UpdateEmergencies(String title, String body){
-        arrayAdapter.add(new EmergencyItem(title, body));
+    public static void answerEmergency(EmergencyItem item, JSONObject finalUser) throws JSONException {
+        RequestParams params = new RequestParams();
+        ApiSrv.answerEmergency(item.getId(), finalUser.getString("_id"), new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
+                super.onSuccess(statusCode, headers, responseBody);
+                if (responseBody != null) {
+                    Log.d("Emergencies", responseBody.toString());
+                }
+                getEmergencies();
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
+                super.onFailure(statusCode, headers, responseString, throwable);
+                Log.e("Emergencies",  "failure: " + responseString);
+                Log.e("Emergencies",  "failurecode: " + statusCode);
+            }
+        });
+    }
+
+    public static void setEmergencies(JSONArray items){
+        if (arrayAdapter != null) {
+            arrayAdapter.clear();
+        }
+
+        for (int i = 0; i < items.length(); i++ ) {
+            try {
+                JSONObject item = items.getJSONObject(i);
+                if (arrayAdapter != null) {
+                    arrayAdapter.add(new EmergencyItem(item));
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void UpdateEmergencies(JSONObject item) throws JSONException {
+        arrayAdapter.add(new EmergencyItem(item));
+    }
+
+    public Dialog onConfirmDialog(DialogInterface.OnClickListener a) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        builder.setTitle("Confirmar?")
+            .setPositiveButton("Dale", a)
+            .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    Log.i("Dialogos", "Confirmacion Cancelada.");
+                    dialog.cancel();
+                }
+            });
+
+        return builder.create();
+    }
+
+    public Dialog notVolunteerDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        builder.setTitle("No sos voluntario")
+            .setPositiveButton("Ser voluntario", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    dialog.cancel();
+                }
+            })
+            .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    dialog.cancel();
+                }
+            });
+
+        return builder.create();
     }
 }

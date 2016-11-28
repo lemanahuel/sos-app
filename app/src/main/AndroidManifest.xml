@@ -15,8 +15,8 @@
     <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS"/>
-    <uses-permission android:name="android.permission.READ_LOGS"/>
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
@@ -27,7 +27,6 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".SplashActivity"
-            android:launchMode="singleTask"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -57,7 +56,6 @@
             android:name="com.auth0.android.provider.WebAuthActivity"
             android:theme="@style/Lock.Theme" />
         <!-- Auth0 Lock Embedded WebView End -->
-
 
         <!-- Auth0 Lock Passwordless SMS Country Code Selection -->
         <activity
@@ -90,7 +88,25 @@
             </intent-filter>
         </service>
 
-        <activity android:name=".MainActivity"></activity>
+        <activity android:name=".MainActivity" />
+
+        <receiver
+            android:name=".MiWidget"
+            android:label="Mi Primer Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/miwidget_wprovider" />
+        </receiver>
+        <receiver android:name=".NotificationReceiver">
+            <intent-filter>
+                <action android:name="OK_ACTION" />
+                <action android:name="CANCEL_ACTION" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

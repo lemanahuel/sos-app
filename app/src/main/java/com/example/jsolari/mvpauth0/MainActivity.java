@@ -1,12 +1,14 @@
 package com.example.jsolari.mvpauth0;
 
-import android.*;
 import android.Manifest;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
@@ -21,7 +23,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -30,17 +32,24 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.model.Circle;
-import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
+import com.loopj.android.http.JsonHttpResponseHandler;
 
-import static com.example.jsolari.mvpauth0.R.id.lblLatitud;
-import static com.example.jsolari.mvpauth0.R.id.lblLongitud;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.net.URL;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import cz.msebera.android.httpclient.Header;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
+
     private Toolbar appbar;
     private DrawerLayout drawerLayout;
     private NavigationView navView;
@@ -48,9 +57,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final String TAG = "MainActivity";
     private static final String LOGTAG = "android-localizacion";
 
+    private Button btnEmergency;
+    private Button btnCancelEmergency;
+    public static FrameLayout content_frame;
+    public static FrameLayout map;
+    private static GoogleMap mMap;
+
     //Localizacion
     private static final int PETICION_PERMISO_LOCALIZACION = 101;
-    private GoogleApiClient apiClient;
+    private static GoogleApiClient apiClient;
     //--Localizacion
 
     @Override
@@ -61,6 +76,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         appbar = (Toolbar) findViewById(R.id.appbar);
         setSupportActionBar(appbar);
 
+        new AsyncTaskEmergencies().execute(this);
+
         getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_nav_menu);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
@@ -69,16 +86,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         apiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this, this)
                 .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
                 .addApi(LocationServices.API)
                 .build();
 
+//        MenuItem item = (MenuItem) findViewById(R.id.profile);
+//        if (user == null) {
+//            item.setVisible(false);
+//        } else {
+//            item.setVisible(true);
+//        }
+
+        content_frame = (FrameLayout) findViewById(R.id.content_frame);
+        map = (FrameLayout) findViewById(R.id.map);
 
         navView = (NavigationView) findViewById(R.id.navview);
         navView.setNavigationItemSelectedListener(
                 new NavigationView.OnNavigationItemSelectedListener() {
                     @Override
                     public boolean onNavigationItemSelected(MenuItem menuItem) {
-
                         boolean fragmentTransaction = false;
                         Fragment fragment = null;
                         Intent intent;
@@ -91,9 +117,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             case R.id.map:
                                 getSupportActionBar().setTitle("Mapa");
                                 menuItem.setChecked(true);
-                                FrameLayout content_frame = (FrameLayout) findViewById(R.id.content_frame);
+                                showMap();
                                 content_frame.setVisibility(View.GONE);
-                                FrameLayout map = (FrameLayout) findViewById(R.id.map);
                                 map.setVisibility(View.VISIBLE);
                                 break;
                             case R.id.capacitationCenters:
@@ -102,6 +127,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 break;
                             case R.id.emergencies:
                                 fragment = new FragmentEmergencies();
+                                fragmentTransaction = true;
+                                break;
+                            case R.id.profile:
+                                fragment = new FragmentProfile();
                                 fragmentTransaction = true;
                                 break;
                         }
@@ -133,18 +162,84 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapFragment.getMapAsync(this);
 
 
-        Button btnEmergency = (Button) findViewById(R.id.btnEmergency);
+        btnEmergency = (Button) findViewById(R.id.btnEmergency);
+        btnCancelEmergency = (Button) findViewById(R.id.btnCancelEmergency);
+        btnCancelEmergency.setVisibility(View.GONE);
         btnEmergency.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-                Location loc = LocationServices.FusedLocationApi.getLastLocation(apiClient);
-                FragmentEmergencies.sendEmergency(String.valueOf(loc.getLatitude()), String.valueOf(loc.getLongitude()));
+                btnEmergency.setVisibility(View.GONE);
+                btnCancelEmergency.setVisibility(View.VISIBLE);
+                startTimer();
             }
         });
+        btnCancelEmergency.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                btnEmergency.setVisibility(View.VISIBLE);
+                stopTimer();
+            }
+        });
+    }
+
+    private Timer mTimer1;
+    private TimerTask mTt1;
+    private Handler mTimerHandler = new Handler();
+    private int count = 5;
+
+    private void stopTimer() {
+        if (mTimer1 != null) {
+            btnEmergency.setVisibility(View.VISIBLE);
+            btnCancelEmergency.setVisibility(View.GONE);
+            count = 5;
+            mTimer1.cancel();
+            mTimer1.purge();
+        }
+    }
+
+    private void startTimer() {
+        mTimer1 = new Timer();
+        mTt1 = new TimerTask() {
+            public void run() {
+                mTimerHandler.post(new Runnable() {
+                    public void run() {
+                        btnCancelEmergency.setText("Cancelar o Llamando al Same en..." + count);
+                        count--;
+                        if (count == 0) {
+                            stopTimer();
+                            sendNotification();
+                        }
+                    }
+                });
+            }
+        };
+
+        mTimer1.schedule(mTt1, 1, 1000);
+    }
+
+    public void sendNotification() {
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        Location loc = LocationServices.FusedLocationApi.getLastLocation(apiClient);
+        if (loc != null) {
+            FragmentEmergencies.sendEmergency(loc);
+            Toast.makeText(MainActivity.this, "Llamando al SAME!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "El GPS deshabilitado, Llamando al SAME!", Toast.LENGTH_SHORT).show();
+        }
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Intent intent = new Intent(Intent.ACTION_DIAL);
+                String phone = "107";
+                String temp = "tel:" + phone;
+                intent.setData(Uri.parse(temp));
+                startActivity(intent);
+                btnEmergency.setVisibility(View.VISIBLE);
+            }
+        }, 10000);
     }
 
     //    @Override
@@ -158,8 +253,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onOptionsItemSelected(item);
     }
 
-    private GoogleMap mMap;
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -167,16 +260,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.getUiSettings().setZoomControlsEnabled(true); //Botonera de Zoom
         mMap.setTrafficEnabled(false); //Mostar trafico
         mMap.getUiSettings().setMapToolbarEnabled(true); //Botonera del Toolbar
+        mMap.setMyLocationEnabled(true);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
 
-
-        LatLng obelisco = new LatLng(-34.604346, -58.395783);
+        /*LatLng obelisco = new LatLng(-34.604346, -58.395783);
         mMap.addMarker(new MarkerOptions().position(obelisco).title("Escuela Da Vinci"));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(obelisco, 14.0f));
 
         LatLng avaya = new LatLng(-34.602629, -58.393655);
         mMap.addMarker(new MarkerOptions().position(avaya).title("Avaya"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(avaya));
-        mMap.setTrafficEnabled(false);
+        mMap.setTrafficEnabled(false);*/
 
         /*
         //Trazar linea de un punto a otro
@@ -197,10 +293,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //Radio de un punto
         Circle circle = mMap.addCircle(circleOptions);
         */
-
-
     }
-
 
 
     public static void showEmergencyToast(String text) {
@@ -209,7 +302,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        Location loc = LocationServices.FusedLocationApi.getLastLocation(apiClient);
 
+        if (loc != null) {
+            LatLng avaya = new LatLng(loc.getLatitude(), loc.getLongitude());
+            //mMap.addMarker(new MarkerOptions().position(avaya).title("Tu posiciòn"));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(avaya, 16.0f));
+            mMap.setTrafficEnabled(false);
+        } else {
+            Toast.makeText(MainActivity.this, "El GPS deshabilitado!", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -220,5 +325,69 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+
+    @SuppressWarnings("ResourceType")
+    public static void showMapMarker(final EmergencyItem item) throws JSONException {
+        Bundle bundle = new Bundle();
+        bundle.putString("EmergencyItem", item.toString());
+        JSONObject location = new JSONObject(item.getLocation());
+        showMap();
+        JSONObject geometry = location.getJSONObject("geometry");
+        JSONObject loc = geometry.getJSONObject("location");
+        double lng = loc.getDouble("lng");
+        double lat = loc.getDouble("lat");
+
+        Log.e("item", location.toString());
+
+        final LatLng destination = new LatLng(lat, lng);
+
+        Location myLocation = LocationServices.FusedLocationApi.getLastLocation(apiClient);
+        LatLng myLatLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+
+        //double distance = SphericalUtil.computeDistanceBetween(myLatLng, destination);
+
+        ApiSrv.getDistanceBetween(myLatLng, destination, new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
+                super.onSuccess(statusCode, headers, responseBody);
+                Marker marker = null;
+
+                if (responseBody != null) {
+                    Log.d("getDistanceBetween", responseBody.toString());
+                    //D/getDistanceBetween: {"destination_addresses":["Gascón 36, Cdad. Autónoma de Buenos Aires, Argentina"],"origin_addresses":["Gascón 34, C1181ABB CABA, Argentina"],
+                    // "rows":[{"elements":[{"distance":{"text":"8 m","value":8},"duration":{"text":"1 min","value":5},"status":"OK"}]}],"status":"OK"}
+                    String distance = "no se pudo calcular";
+                    String duration = "no se pudo calcular";
+
+                    try {
+                        JSONObject element = responseBody.getJSONArray("rows").getJSONObject(0).getJSONArray("elements").getJSONObject(0);
+                        distance = element.getJSONObject("distance").getString("text");
+                        duration = element.getJSONObject("duration").getString("text");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    String address = item.getBody().split(",")[0];
+                    marker = mMap.addMarker(new MarkerOptions().position(destination).title(address + ", Distancia " + distance + " en " + duration));
+                } else {
+                    marker = mMap.addMarker(new MarkerOptions().position(destination).title(item.getBody()));
+                }
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(destination, 16.0f));
+                mMap.setTrafficEnabled(false);
+                marker.showInfoWindow();
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
+                super.onFailure(statusCode, headers, responseString, throwable);
+                Log.e("getDistanceBetween",  "failure: " + responseString);
+                Log.e("getDistanceBetween",  "failurecode: " + statusCode);
+            }
+        });
+    }
+
+    public static void showMap() {
+        content_frame.setVisibility(View.GONE);
+        map.setVisibility(View.VISIBLE);
     }
 }
