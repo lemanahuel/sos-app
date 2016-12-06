@@ -23,14 +23,10 @@ import javax.net.ssl.X509TrustManager;
 
 import cz.msebera.android.httpclient.Header;
 
-/**
- * Created by leman on 11/13/2016.
- */
-
 public class ApiSrv {
 
-    private static final String BASE_URL = "http://192.168.0.101:3001";
-    //private static final String BASE_URL = "https://sos-api-qa.herokuapp.com";
+    //private static final String BASE_URL = "http://192.168.0.101:3001";
+    private static final String BASE_URL = "https://sos-api-qa.herokuapp.com";
     private static final String BASE_URL_PROD = "https://sos-api-prod.herokuapp.com";
 
     private static AsyncHttpClient client = new AsyncHttpClient();
@@ -59,11 +55,16 @@ public class ApiSrv {
         RequestParams params = new RequestParams();
         params.put("isVolunteer", wantToBeVolunteer);
         params.put("comuna", comuna);
+        params.put("token", FirebaseInstanceId.getInstance().getToken());
         client.post(getAbsoluteUrl("/users/" + userId), params, responseHandler);
     }
 
     public void getEmergencies(AsyncHttpResponseHandler responseHandler) {
         syncClient.get(getAbsoluteUrl("/incidents"), responseHandler);
+    }
+
+    public void getAsyncEmergencies(AsyncHttpResponseHandler responseHandler) {
+        client.get(getAbsoluteUrl("/incidents"), responseHandler);
     }
 
     public void sendEmergency(Location loc, AsyncHttpResponseHandler responseHandler) {

@@ -75,8 +75,6 @@
             android:glEsVersion="0x00020000"
             android:required="true" />
 
-        <activity android:name=".AlertActivity" />
-
         <service android:name=".MyFirebaseMessagingService">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -92,7 +90,7 @@
 
         <receiver
             android:name=".MiWidget"
-            android:label="Mi Primer Widget">
+            android:label="VoluntarioSOS">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

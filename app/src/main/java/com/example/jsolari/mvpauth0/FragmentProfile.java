@@ -1,9 +1,7 @@
 package com.example.jsolari.mvpauth0;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -15,8 +13,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -38,6 +36,7 @@ public class FragmentProfile extends Fragment {
     public JSONObject userJson = null;
     public Boolean isUserVolunteer = false;
     public String userComuna = "";
+    public TextView MyComuna;
 
     public FragmentProfile() {}
 
@@ -46,6 +45,8 @@ public class FragmentProfile extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_profile, container, false);
+
+
     }
 
     @Override
@@ -56,16 +57,28 @@ public class FragmentProfile extends Fragment {
         String user = prefs.getString("user", "");
         wantToBeVolunteer = (CheckBox) getView().findViewById(R.id.wantToBeVolunteer);
 
+        MyComuna = (TextView) getView().findViewById(R.id.MyComuna);
+        //MyComuna.setText("Actualmente no pertenece a ninguna comuna.");
+
+
         try {
             userJson = new JSONObject(user);
             isUserVolunteer = userJson.getBoolean("isVolunteer");
             userComuna = userJson.getString("comuna");
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
         if (isUserVolunteer.equals(true)) {
             wantToBeVolunteer.setChecked(true);
+            if (userComuna.equals("")) {
+                MyComuna.setText("Actualmente usted NO pertence a ninguna comuna.");
+            }else{
+                MyComuna.setText("Actualmente usted pertenece a la " + userComuna);
+            }
+        }else{
+            MyComuna.setText("");
         }
 
         comunaSpinner = (Spinner) getView().findViewById(R.id.comunaSpinner);
@@ -78,7 +91,7 @@ public class FragmentProfile extends Fragment {
                 Bundle b = new Bundle();
                 if (parent.getSelectedItemId() != 0) {
                     //Object com = parent.getItemAtPosition(position);
-                    userComuna = "comuna-" + (position+1);
+                    userComuna = "Comuna " + (position+1);
                     b.putString("comuna", "comuna " + position);
                 }
             }
@@ -96,7 +109,6 @@ public class FragmentProfile extends Fragment {
 //                editor.putInt("objective", objectiveRadio.getCheckedRadioButtonId());
 //                editor.putBoolean("otherPreference", otherPreference.isChecked());
 //                editor.commit();
-                // Toast.makeText(getContext(), "guardardo", Toast.LENGTH_LONG).show();
                 try {
                     if (userJson != null) {
                         updateUser();
@@ -116,7 +128,7 @@ public class FragmentProfile extends Fragment {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
-                Toast.makeText(getContext(), "guardardo", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), R.string.save, Toast.LENGTH_LONG).show();
 
                 SharedPreferences prefs = activity.getSharedPreferences("prefs", Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = prefs.edit();
@@ -127,8 +139,8 @@ public class FragmentProfile extends Fragment {
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 super.onFailure(statusCode, headers, responseString, throwable);
-                Log.e("updateUser", "failure: " + responseString);
-                Log.e("updateUser", "failurecode: " + statusCode);
+                Log.e(getString(R.string.updateUser), "failure: " + responseString);
+                Log.e(getString(R.string.updateUser), "failurecode: " + statusCode);
             }
         });
     }

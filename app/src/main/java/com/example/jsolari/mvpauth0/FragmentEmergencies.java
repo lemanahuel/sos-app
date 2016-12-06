@@ -45,6 +45,7 @@ public class FragmentEmergencies extends Fragment {
     public static SharedPreferences prefs;
     private static ApiSrv ApiSrv = new ApiSrv();
     private ArrayList<EmergencyItem> datos = new ArrayList<EmergencyItem>();
+    public JSONObject user;
 
     public FragmentEmergencies() {
         // Required empty public constructor
@@ -59,14 +60,12 @@ public class FragmentEmergencies extends Fragment {
     @Override
     public void onActivityCreated(Bundle state) {
         super.onActivityCreated(state);
-        JSONObject user = null;
         prefs = this.getActivity().getSharedPreferences("prefs", Context.MODE_PRIVATE);
         try {
             user = new JSONObject(prefs.getString("user", "{}"));
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        final JSONObject finalUser = user;
 
         arrayAdapter = new FragmentEmergenciesAdapter(this, datos);
         emergenciesList = (ListView)getView().findViewById(R.id.emergenciesList);
@@ -75,20 +74,20 @@ public class FragmentEmergencies extends Fragment {
             public void onItemClick(AdapterView<?> a, View v, int position, long id) {
             final EmergencyItem item = ((EmergencyItem) a.getItemAtPosition(position));
             try {
-                if (finalUser != null && finalUser.getBoolean("isVolunteer")) {
+                if (user != null && user.getBoolean("isVolunteer")) {
                     Dialog dialog = onConfirmDialog(new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
-                            try {
-                                answerEmergency(item, finalUser);
-                                MainActivity.showMapMarker(item);
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
-                            dialog.cancel();
+                        try {
+                            answerEmergency(item, user);
+                            MainActivity.showMapMarker(item);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        dialog.cancel();
                         }
                     });
                     dialog.show();
-                } else if (finalUser.getBoolean("isVolunteer")) {
+                } else if (user.getBoolean("isVolunteer")) {
                     notVolunteerDialog().show();
                 }
             } catch (JSONException e) {
@@ -141,21 +140,21 @@ public class FragmentEmergencies extends Fragment {
             public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
                 if (responseBody != null) {
-                    Log.d("Emergencies", responseBody.toString());
+                    Log.d(String.valueOf(R.string.Emergencies), responseBody.toString());
                 }
                 getEmergencies();
             }
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 super.onFailure(statusCode, headers, responseString, throwable);
-                Log.e("Emergencies",  "failure: " + responseString);
-                Log.e("Emergencies",  "failurecode: " + statusCode);
+                Log.e(String.valueOf(R.string.Emergencies),  "failure: " + responseString);
+                Log.e(String.valueOf(R.string.Emergencies),  "failurecode: " + statusCode);
             }
         });
     }
 
     public static void getEmergencies(){
-        ApiSrv.getEmergencies(new JsonHttpResponseHandler() {
+        ApiSrv.getAsyncEmergencies(new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONArray responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
@@ -170,8 +169,8 @@ public class FragmentEmergencies extends Fragment {
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 super.onFailure(statusCode, headers, responseString, throwable);
-                Log.e("Emergencies",  "failure: " + responseString);
-                Log.e("Emergencies",  "failurecode: " + statusCode);
+                Log.e(String.valueOf(R.string.Emergencies),  "failure: " + responseString);
+                Log.e(String.valueOf(R.string.Emergencies),  "failurecode: " + statusCode);
             }
         });
     }
@@ -183,20 +182,21 @@ public class FragmentEmergencies extends Fragment {
             public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
                 super.onSuccess(statusCode, headers, responseBody);
                 if (responseBody != null) {
-                    Log.d("Emergencies", responseBody.toString());
+                    Log.d(String.valueOf(R.string.Emergencies), responseBody.toString());
                 }
                 getEmergencies();
             }
             @Override
             public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 super.onFailure(statusCode, headers, responseString, throwable);
-                Log.e("Emergencies",  "failure: " + responseString);
-                Log.e("Emergencies",  "failurecode: " + statusCode);
+                Log.e(String.valueOf(R.string.Emergencies),  "failure: " + responseString);
+                Log.e(String.valueOf(R.string.Emergencies),  "failurecode: " + statusCode);
             }
         });
     }
 
     public static void setEmergencies(JSONArray items){
+        String myToken = FirebaseInstanceId.getInstance().getToken();
         if (arrayAdapter != null) {
             arrayAdapter.clear();
         }
@@ -204,7 +204,7 @@ public class FragmentEmergencies extends Fragment {
         for (int i = 0; i < items.length(); i++ ) {
             try {
                 JSONObject item = items.getJSONObject(i);
-                if (arrayAdapter != null) {
+                if (arrayAdapter != null && item.getString("token").equals(myToken) == false) {
                     arrayAdapter.add(new EmergencyItem(item));
                 }
             } catch (JSONException e) {
@@ -217,14 +217,14 @@ public class FragmentEmergencies extends Fragment {
         arrayAdapter.add(new EmergencyItem(item));
     }
 
-    public Dialog onConfirmDialog(DialogInterface.OnClickListener a) {
+    public Dialog onConfirmDialog(DialogInterface.OnClickListener cb) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle("Confirmar?")
-            .setPositiveButton("Dale", a)
-            .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+        builder.setTitle(R.string.confirm)
+            .setPositiveButton(R.string.si, cb)
+            .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int id) {
-                    Log.i("Dialogos", "Confirmacion Cancelada.");
+                    Log.i(getString(R.string.dialogos), getString(R.string.confirmCanceled));
                     dialog.cancel();
                 }
             });
@@ -235,13 +235,13 @@ public class FragmentEmergencies extends Fragment {
     public Dialog notVolunteerDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle("No sos voluntario")
-            .setPositiveButton("Ser voluntario", new DialogInterface.OnClickListener() {
+        builder.setTitle(R.string.volno)
+            .setPositiveButton(R.string.volquiero, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int id) {
                     dialog.cancel();
                 }
             })
-            .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+            .setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int id) {
                     dialog.cancel();
                 }

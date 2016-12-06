@@ -1,12 +1,10 @@
 package com.example.jsolari.mvpauth0;
 
 import android.Manifest;
-import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -35,14 +33,11 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.maps.android.SphericalUtil;
 import com.loopj.android.http.JsonHttpResponseHandler;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.net.URL;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -74,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         appbar = (Toolbar) findViewById(R.id.appbar);
-        setSupportActionBar(appbar);
+            setSupportActionBar(appbar);
 
         new AsyncTaskEmergencies().execute(this);
 
@@ -132,6 +127,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             case R.id.profile:
                                 fragment = new FragmentProfile();
                                 fragmentTransaction = true;
+                                break;
+                            case R.id.logout:
+                                                                
                                 break;
                         }
 
@@ -203,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 mTimerHandler.post(new Runnable() {
                     public void run() {
-                        btnCancelEmergency.setText("Cancelar o Llamando al Same en..." + count);
+                        btnCancelEmergency.setText(getString(R.string.callCancel) + count);
                         count--;
                         if (count == 0) {
                             stopTimer();
@@ -224,9 +222,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Location loc = LocationServices.FusedLocationApi.getLastLocation(apiClient);
         if (loc != null) {
             FragmentEmergencies.sendEmergency(loc);
-            Toast.makeText(MainActivity.this, "Llamando al SAME!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, R.string.callSame, Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(MainActivity.this, "El GPS deshabilitado, Llamando al SAME!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, R.string.GPSDisableCallSame, Toast.LENGTH_SHORT).show();
         }
 
         new Handler().postDelayed(new Runnable() {
@@ -313,7 +311,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(avaya, 16.0f));
             mMap.setTrafficEnabled(false);
         } else {
-            Toast.makeText(MainActivity.this, "El GPS deshabilitado!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, R.string.GPSDisable, Toast.LENGTH_SHORT).show();
         }
     }
 
