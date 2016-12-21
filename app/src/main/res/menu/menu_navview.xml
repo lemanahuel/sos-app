@@ -1,26 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/login"
-            android:icon="@drawable/logologin"
-            android:title="@string/signup"/>
-        <item
-            android:id="@+id/profile"
-            android:icon="@drawable/logoprofile"
-            android:title="@string/profile"/>
         <item
             android:id="@+id/map"
             android:icon="@drawable/logomapa"
             android:title="@string/map"/>
         <item
+            android:id="@+id/profile"
+            android:icon="@drawable/logoprofile"
+            android:title="@string/profile"/>
+        <item
+            android:id="@+id/volunteer"
+            android:icon="@drawable/logovoluntario"
+            android:title="@string/volunteer"/>
+        <item
             android:id="@+id/emergencies"
             android:icon="@drawable/logoemergencie"
             android:title="@string/emergencies"/>
         <item
-        android:id="@+id/capacitationCenters"
-        android:icon="@drawable/logocenters"
-        android:title="@string/capacitationCenters"/>
+            android:id="@+id/capacitationCenters"
+            android:icon="@drawable/logocenters"
+            android:title="@string/capacitationCenters"/>
+        <item
+            android:id="@+id/about"
+            android:icon="@drawable/logoabout"
+            android:title="@string/about"/>
         <item
             android:id="@+id/logout"
             android:icon="@drawable/logout"

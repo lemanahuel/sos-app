@@ -3,7 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:paddingLeft="25dp"
+    android:paddingRight="25dp"
+    android:focusable="false">
 
     <TextView android:id="@+id/title"
         android:layout_width="match_parent"
@@ -16,7 +19,4 @@
         android:layout_height="wrap_content"
         android:textStyle="normal"
         android:textSize="12sp" />
-
 </LinearLayout>
-
-
